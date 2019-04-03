@@ -1,0 +1,21 @@
+{
+  "name": "wechat-kit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": ""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "apiai": "^4.0.3",
+    "axios": "^0.18.0",
+    "md5": "^2.2.1",
+    "moment": "^2.24.0",
+    "qrcode-terminal": "^0.12.0",
+    "querystring": "^0.2.0",
+    "wechaty": "^0.22.6"
+  }
+}

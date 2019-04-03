@@ -1,0 +1,6 @@
+node_modules
+files/*
+admins.js
+bot.js
+keys.js
+default.memory-card.json
