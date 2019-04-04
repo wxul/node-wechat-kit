@@ -1,20 +1,40 @@
 const {
     Message,
     log,
+    Contact,
 } = require('wechaty');
+const fs = require('fs');
 const path = require('path');
 const config = require('../config');
 const moment = require('moment');
+const Eventemitter3 = require('eventemitter3');
+
+let event = new Eventemitter3();
 
 let senders = [];
 let admins = config.admins;
+
+let watchList = [];
+
+event.on('remove-watch', message => {
+    console.log('remove-watch-begin', watchList.length);
+    clearTimeout(message.timer);
+    message.timer = null;
+    message.message = null;
+    let index = watchList.indexOf(message);
+    if (index >= 0) {
+        watchList.splice(index, 1);
+    }
+
+    console.log('remove-watch-end', watchList.length);
+});
 
 // const talk = require('../bots/apiai.free');
 const talk = require('../bots/wx');
 
 async function onMessage(message) {
     try {
-        log.info('Bot', '(message) %s', message.toString());
+        log.info('Bot', '(message) %s %s', message.id, message.toString());
 
         // 初始化发送人
         if (!senders || senders.length == 0) {
@@ -22,6 +42,7 @@ async function onMessage(message) {
                 let find = await bot.Contact.find({
                     name: admins[k]
                 });
+                // console.log('find user:', find);
                 find && senders.push(find);
             }
         }
@@ -36,13 +57,15 @@ async function onMessage(message) {
         const room = message.room();
         const type = message.type();
 
-        log.info('Message', 'from: %s, %s; to: %s, %s', contact.id, contact.name(), to.id, to.name());
+        log.info('Message', 'from: %s, %s;', contact.id, contact.name());
 
         // 群聊
         if (room) {
             let topic = await room.topic();
-            log.info('Room', 'info: %s, %s', room.id, topic);
+            log.info('Room', 'info: %s, %s, %s', room.id, topic, contact.name());
         }
+
+        let isAdmin = admins.indexOf(contact.name()) >= 0;
 
         // 是文件就保存
         // if (message instanceof MediaMessage) {
@@ -61,37 +84,39 @@ async function onMessage(message) {
                 let text = message.text();
                 let reg = /^\@女仆\s+/;
                 console.log('文本:', message.text());
-                if (reg.test(text)) {
-                    text = text.replace(reg, '');
 
-                    let ssid = room ? room.id : contact.id;
+                if (room && !reg.test(text)) return;
+                if (!room && !isAdmin) return;
 
-                    var result = await talk(text, ssid);
+                if (room) text = text.replace(reg, '');
 
-                    if (result) {
-                        text = result;
-                        console.log('result', text);
-                    } else {
-                        text = '';
-                        return;
-                    }
-                    if (room) {
-                        await room.say(text);
-                    } else {
-                        await say(text);
-                    }
+                let ssid = room ? room.id : contact.id;
+
+                var result = await talk(text, ssid);
+
+                if (result) {
+                    text = result;
+                    console.log('result', text);
+                } else {
+                    text = '';
+                    return;
+                }
+                if (room) {
+                    await room.say(text);
+                } else {
+                    await contact.say(text);
                 }
                 break;
             case Message.Type.Video:
-                await saveMediaFile(message);
+                await saveMediaFile2(message);
                 console.log('video:');
                 break;
             case Message.Type.Image:
-                await saveMediaFile(message);
+                await saveMediaFile2(message);
                 console.log('Image:');
                 break;
             case Message.Type.Audio:
-                await saveMediaFile(message);
+                await saveMediaFile2(message);
                 console.log('Audio:');
                 break;
             case Message.Type.Money:
@@ -99,6 +124,9 @@ async function onMessage(message) {
                 break;
             case Message.Type.Url:
                 console.log('Url:', message.text());
+                break;
+            case Message.Type.Recalled:
+                console.log('Recalled', message);
                 break;
             default:
                 console.log('default type');
@@ -120,16 +148,18 @@ async function say(p) {
     }
 }
 
+// for default puppet
 async function saveMediaFile(message) {
     try {
         const file = await message.toFileBox();
+        console.log('filebox: ', file, file.toFile);
         const contact = message.from();
         const room = message.room();
         const date = message.date();
         let name = file.name;
         name = contact.name() + '_' + name;
         if (room) {
-            let topic = room.topic();
+            let topic = await room.topic();
             name = topic + '_' + name;
         }
         name = moment(date).format('YYYY_MM_DD') + '_' + name;
@@ -139,6 +169,67 @@ async function saveMediaFile(message) {
     } catch (error) {
         console.log(error);
     }
+}
+
+// for wechaty-puppet-wechat4u
+async function saveMediaFile2(message) {
+    const file = await message.toFileBox();
+    let name = file.name;
+    console.log('IMAGE local filename: ' + name);
+
+    const contact = message.from();
+    const room = message.room();
+    const date = message.date();
+    // let name = file.name;
+    name = contact.name() + '_' + name;
+    if (room) {
+        let topic = await room.topic();
+        name = topic + '_' + name;
+    }
+    name = moment(date).format('YYYY_MM_DD') + '_' + name;
+
+    process.stdout.write('saving...')
+    try {
+        var filepath = path.resolve(config.path, name);
+        // const netStream = await message.readyStream()
+        // netStream
+        //     .pipe(fileStream)
+        //     .on('close', _ => {
+        //         const stat = fs.statSync(filename)
+        //         console.log(', saved as ', filename, ' size: ', stat.size)
+        //     })
+        let result = await saveFile(filepath, file.stream);
+        console.log('result', result);
+    } catch (e) {
+        console.error('stream error:', e)
+    }
+}
+
+var saveFile = function (filePath, fileData) {
+    return new Promise((resolve, reject) => {
+        // 块方式写入文件
+        const wstream = fs.createWriteStream(filePath);
+
+        wstream.on('open', () => {
+            const blockSize = 128;
+            const nbBlocks = Math.ceil(fileData.length / (blockSize));
+            for (let i = 0; i < nbBlocks; i += 1) {
+                const currentBlock = fileData.slice(
+                    blockSize * i,
+                    Math.min(blockSize * (i + 1), fileData.length),
+                );
+                wstream.write(currentBlock);
+            }
+
+            wstream.end();
+        });
+        wstream.on('error', (err) => {
+            reject(err);
+        });
+        wstream.on('finish', () => {
+            resolve(true);
+        });
+    });
 }
 
 module.exports = onMessage;

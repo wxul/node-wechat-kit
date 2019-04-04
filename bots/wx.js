@@ -18,18 +18,18 @@ module.exports = async function (text) {
             question: text
         }
         let sign = getSign(params);
-        console.log(params, sign);
+        // console.log(params, sign);
         let data = {
             sign,
             ...params
         };
-        console.log(data);
+        // console.log(data);
         let result = await axios.post(wx.prefix, querystring.stringify(data), {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
         });
-        console.log(result.data);
+        // console.log(result.data);
 
         return result.data.data.answer;
     } catch (error) {
@@ -42,14 +42,14 @@ function getSign(params, key) {
     let keys = Object.keys(params);
     keys = keys.sort();
     let sign = '';
-    console.log(123, keys);
+    // console.log(123, keys);
     keys.forEach(k => {
         if (params[k]) {
             sign += `${k}=${encodeURI(params[k])}&`;
         }
     })
     sign += `app_key=${key || wx.appkey}`;
-    console.log(sign);
+    // console.log(sign);
 
     return md5(sign).toUpperCase();
 }

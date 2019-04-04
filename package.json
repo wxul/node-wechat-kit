@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "WECHATY_LOG=silly npm test",
     "start": ""
   },
   "author": "",
@@ -12,10 +12,14 @@
   "dependencies": {
     "apiai": "^4.0.3",
     "axios": "^0.18.0",
+    "eventemitter3": "^3.1.0",
+    "file-box": "^0.8.27",
     "md5": "^2.2.1",
     "moment": "^2.24.0",
     "qrcode-terminal": "^0.12.0",
     "querystring": "^0.2.0",
-    "wechaty": "^0.22.6"
+    "wechat4u": "^0.7.6",
+    "wechaty": "^0.22.6",
+    "wechaty-puppet-wechat4u": "git+ssh://git@github.com/wxul/wechaty-puppet-wechat4u.git"
   }
 }

@@ -3,4 +3,5 @@ files/*
 admins.js
 bot.js
 keys.js
+rooms.js
 default.memory-card.json
