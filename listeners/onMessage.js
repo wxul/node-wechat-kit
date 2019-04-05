@@ -8,6 +8,7 @@ const path = require('path');
 const config = require('../config');
 const moment = require('moment');
 const Eventemitter3 = require('eventemitter3');
+const weatherServ = require('../service/weather');
 
 let event = new Eventemitter3();
 
@@ -29,8 +30,9 @@ event.on('remove-watch', message => {
     console.log('remove-watch-end', watchList.length);
 });
 
-// const talk = require('../bots/apiai.free');
+const apiai = require('../bots/apiai.free');
 const talk = require('../bots/wx');
+
 
 async function onMessage(message) {
     try {
@@ -84,15 +86,41 @@ async function onMessage(message) {
                 let text = message.text();
                 let reg = /^\@女仆\s+/;
                 console.log('文本:', message.text());
+                let isxml = /<.+>.+<\/.+>/.test(text);
+                // 撤回消息在这里
+                if (isxml) {
+                    let msg = text.replace(/\s/g, '')
+                    msg = msg.match(/<msgid>(.+?)<\/msgid><replacemsg>(.+?)<\/replacemsg>/);
+                    if (msg) {
+                        console.log('isxml', msg[1], msg[2]);
+                        let m = await bot.Message.find({ id: msg[1] });
+                        console.log(m);
+                        return;
+                    }
+                }
 
+                // 群聊里不是@自己的跳过
                 if (room && !reg.test(text)) return;
+                // 单聊的不是管理员跳过
                 if (!room && !isAdmin) return;
 
                 if (room) text = text.replace(reg, '');
 
                 let ssid = room ? room.id : contact.id;
 
-                var result = await talk(text, ssid);
+                // 先从google拿语义
+                var apiresult = await apiai(text, ssid);
+                var result = '';
+
+                if (!apiresult) {
+                    // 没有语义走腾讯聊天
+                    result = await talk(text);
+                } else {
+                    // 天气语义
+                    if (weatherServ.valid(apiresult)) result = await weatherServ(apiresult);
+                    else
+                        result = JSON.stringify(apiresult);
+                }
 
                 if (result) {
                     text = result;
@@ -108,15 +136,21 @@ async function onMessage(message) {
                 }
                 break;
             case Message.Type.Video:
-                await saveMediaFile2(message);
+                if (!isAdmin) {
+                    saveMediaFile2(message);
+                }
                 console.log('video:');
                 break;
             case Message.Type.Image:
-                await saveMediaFile2(message);
+                if (!isAdmin) {
+                    saveMediaFile2(message);
+                }
                 console.log('Image:');
                 break;
             case Message.Type.Audio:
-                await saveMediaFile2(message);
+                if (!isAdmin) {
+                    saveMediaFile2(message);
+                }
                 console.log('Audio:');
                 break;
             case Message.Type.Money:

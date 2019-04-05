@@ -13,10 +13,10 @@ const {
 module.exports = function (text, ssid) {
     return new Promise((resolve, reject) => {
         brainApiAi.textRequest(text, {
-                sessionId: ssid
-            })
+            sessionId: ssid
+        })
             .on('response', function (response) {
-                console.log(response)
+                // console.log(response)
                 /*
 { id: 'a09381bb-8195-4139-b49c-a2d03ad5e014',
   timestamp: '2016-05-27T17:22:46.597Z',
@@ -30,13 +30,14 @@ module.exports = function (text, ssid) {
      score: 0 },
   status: { code: 200, errorType: 'success' } }
           */
-                const reply = response.result.fulfillment.speech
-                if (!reply) {
-                    log.info('ApiAi', `Talker do not want to talk for "${text}"`)
-                    return reject()
+                const parameters = response.result.parameters;
+
+                if (!parameters) {
+                    return resolve(false);
+                } else {
+                    log.info('ApiAi', 'Talker indents:"%s"', JSON.stringify(parameters));
+                    return resolve(parameters)
                 }
-                log.info('ApiAi', 'Talker reply:"%s" for "%s" ', reply, text)
-                return resolve(reply)
             })
             .on('error', function (error) {
                 log.error('ApiAi', error)
