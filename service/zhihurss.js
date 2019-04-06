@@ -42,7 +42,7 @@ function parse(xmlstr) {
 function itemsFormat(items) {
     return '知乎RSS \r\n' + items.map(t => {
         let l = t.link.split('?')[0];
-        console.log(t.link, typeof t.link);
+        // console.log(t.link, typeof t.link);
         return `${t.title}\r\n${l}`;
     }).join('\r\n');
 }

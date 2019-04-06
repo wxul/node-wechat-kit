@@ -132,17 +132,6 @@ async function onMessage(message) {
                 let reg = /^\@女仆\s+/;
                 console.log('文本:', message.text());
 
-                if (text == '知乎') {
-                    let r = await rss();
-                    if (room) {
-                        await room.say(r);
-                    } else {
-                        await contact.say(r);
-                    }
-                    console.log(r);
-                    return;
-                }
-
                 let isxml = /<.+>.+<\/.+>/.test(text);
                 // xml的未格式化消息
                 if (isxml) {
@@ -170,6 +159,17 @@ async function onMessage(message) {
                 // if (!room && !isAdmin) return;
 
                 if (room) text = text.replace(reg, '');
+
+                if (text == '知乎') {
+                    let r = await rss();
+                    if (room) {
+                        await room.say(r);
+                    } else {
+                        await contact.say(r);
+                    }
+                    // console.log(r);
+                    return;
+                }
 
                 let ssid = room ? room.id : contact.id;
 
