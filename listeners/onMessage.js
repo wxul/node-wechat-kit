@@ -9,6 +9,7 @@ const config = require('../config');
 const moment = require('moment');
 const Eventemitter3 = require('eventemitter3');
 const weatherServ = require('../service/weather');
+const rss = require('../service/zhihurss');
 const { FileBox } = require('file-box');
 
 let event = new Eventemitter3();
@@ -96,7 +97,7 @@ async function onMessage(message) {
 
         log.info('Message', 'from: %s, %s;', contact.id, contact.name());
         // 消息推送
-        if('newsapp' == contact.id) return;
+        if ('newsapp' == contact.id) return;
 
         // 群聊
         if (room) {
@@ -105,6 +106,13 @@ async function onMessage(message) {
         }
 
         let isAdmin = admins.indexOf(contact.name()) >= 0;
+
+        // rss test
+        // if (isAdmin && /rss/.test(message.text())) {
+        //     console.log('rss test');
+        //     let r = await rss();
+        //     // console.log('gett', r);
+        // }
 
         // 是文件就保存
         // if (message instanceof MediaMessage) {
@@ -123,6 +131,18 @@ async function onMessage(message) {
                 let text = message.text();
                 let reg = /^\@女仆\s+/;
                 console.log('文本:', message.text());
+
+                if (text == '知乎') {
+                    let r = await rss();
+                    if (room) {
+                        await room.say(r);
+                    } else {
+                        await contact.say(r);
+                    }
+                    console.log(r);
+                    return;
+                }
+
                 let isxml = /<.+>.+<\/.+>/.test(text);
                 // xml的未格式化消息
                 if (isxml) {

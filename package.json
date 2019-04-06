@@ -16,10 +16,12 @@
     "file-box": "^0.8.27",
     "md5": "^2.2.1",
     "moment": "^2.24.0",
+    "node-schedule": "^1.3.2",
     "qrcode-terminal": "^0.12.0",
     "querystring": "^0.2.0",
     "wechat4u": "^0.7.6",
     "wechaty": "^0.22.6",
-    "wechaty-puppet-wechat4u": "git+ssh://git@github.com/wxul/wechaty-puppet-wechat4u.git"
+    "wechaty-puppet-wechat4u": "git+ssh://git@github.com/wxul/wechaty-puppet-wechat4u.git",
+    "xml2js": "^0.4.19"
   }
 }
