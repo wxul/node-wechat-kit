@@ -9,6 +9,7 @@ const config = require('../config');
 const moment = require('moment');
 const Eventemitter3 = require('eventemitter3');
 const weatherServ = require('../service/weather');
+const { FileBox } = require('file-box');
 
 let event = new Eventemitter3();
 
@@ -29,6 +30,40 @@ event.on('remove-watch', message => {
 
     console.log('remove-watch-end', watchList.length);
 });
+
+event.on('recall', async message => {
+
+    try {
+        console.log('recall', message.toString());
+
+        const contact = message.from();
+        const room = message.room();
+        const type = message.type();
+
+        // if (!room) return;
+        let topic = room ? (await room.topic()) : '单聊';
+        switch (type) {
+            case Message.Type.Text:
+                say(`[${contact.name()}]于[${topic}]中撤回了一条消息: ${message.text()}`);
+                break;
+            case Message.Type.Video:
+            case Message.Type.Audio:
+            case Message.Type.Image:
+                let file = await saveMediaFile2(message);
+                if (file) {
+                    const fb = FileBox.fromFile(file);
+                    await say(`[${contact.name()}]于[${topic}]中撤回了一条媒体消息`);
+                    await say(fb);
+                }
+                break;
+            default:
+                break;
+        }
+    } catch (error) {
+        console.log('recall error', error);
+    }
+
+})
 
 const apiai = require('../bots/apiai.free');
 const talk = require('../bots/wx');
@@ -87,14 +122,22 @@ async function onMessage(message) {
                 let reg = /^\@女仆\s+/;
                 console.log('文本:', message.text());
                 let isxml = /<.+>.+<\/.+>/.test(text);
-                // 撤回消息在这里
+                // xml的未格式化消息
                 if (isxml) {
-                    let msg = text.replace(/\s/g, '')
-                    msg = msg.match(/<msgid>(.+?)<\/msgid><replacemsg>(.+?)<\/replacemsg>/);
-                    if (msg) {
-                        console.log('isxml', msg[1], msg[2]);
-                        let m = await bot.Message.find({ id: msg[1] });
-                        console.log(m);
+                    let msg = text.replace(/\s/g, '');
+                    let isrevoke = /revokemsg/.test(msg);
+                    // 撤回的消息
+                    if (isrevoke) {
+                        msg = msg.match(/<msgid>(.+?)<\/msgid><replacemsg>(.+?)<\/replacemsg>/);
+                        if (msg) {
+                            console.log('isrevoke', msg[1], msg[2]);
+                            let m = bot.Message.load(msg[1]);
+                            m.ready().then(() => {
+                                event.emit('recall', m);
+                            });
+                            return;
+                        }
+                    } else {
                         return;
                     }
                 }
@@ -102,7 +145,7 @@ async function onMessage(message) {
                 // 群聊里不是@自己的跳过
                 if (room && !reg.test(text)) return;
                 // 单聊的不是管理员跳过
-                if (!room && !isAdmin) return;
+                // if (!room && !isAdmin) return;
 
                 if (room) text = text.replace(reg, '');
 
@@ -136,21 +179,21 @@ async function onMessage(message) {
                 }
                 break;
             case Message.Type.Video:
-                if (!isAdmin) {
-                    saveMediaFile2(message);
-                }
+                // if (!isAdmin) {
+                //     saveMediaFile2(message);
+                // }
                 console.log('video:');
                 break;
             case Message.Type.Image:
-                if (!isAdmin) {
-                    saveMediaFile2(message);
-                }
+                // if (!isAdmin) {
+                //     saveMediaFile2(message);
+                // }
                 console.log('Image:');
                 break;
             case Message.Type.Audio:
-                if (!isAdmin) {
-                    saveMediaFile2(message);
-                }
+                // if (!isAdmin) {
+                //     saveMediaFile2(message);
+                // }
                 console.log('Audio:');
                 break;
             case Message.Type.Money:
@@ -233,9 +276,11 @@ async function saveMediaFile2(message) {
         //         console.log(', saved as ', filename, ' size: ', stat.size)
         //     })
         let result = await saveFile(filepath, file.stream);
-        console.log('result', result);
+        console.log('save file result', filepath);
+        return result ? filepath : false;
     } catch (e) {
-        console.error('stream error:', e)
+        console.error('stream error:', e);
+        return false;
     }
 }
 

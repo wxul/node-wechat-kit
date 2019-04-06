@@ -38,6 +38,7 @@ bot
     .on('login', './listeners/onLogin')
     .on('message', './listeners/onMessage')
     .on('logout', './listeners/onLogout')
+    .on('error', './listeners/onError')
     .start()
     .catch(async function (e) {
         log(`Init() fail: ${e}.`);
