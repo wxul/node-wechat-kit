@@ -95,6 +95,8 @@ async function onMessage(message) {
         const type = message.type();
 
         log.info('Message', 'from: %s, %s;', contact.id, contact.name());
+        // 消息推送
+        if('newsapp' == contact.id) return;
 
         // 群聊
         if (room) {
