@@ -1,8 +1,4 @@
-const {
-    Message,
-    log,
-    Contact,
-} = require('wechaty');
+const { Message, log, Contact } = require('wechaty');
 const fs = require('fs');
 const path = require('path');
 const config = require('../config');
@@ -32,20 +28,21 @@ event.on('remove-watch', message => {
     console.log('remove-watch-end', watchList.length);
 });
 
-event.on('recall', async message => {
-
+event.on('recall', async opt => {
     try {
+        let message = opt.msg;
+        let name = opt.name;
         console.log('recall', message.toString());
 
-        const contact = message.from();
+        // const contact = message.from();
         const room = message.room();
         const type = message.type();
 
         // if (!room) return;
-        let topic = room ? (await room.topic()) : '单聊';
+        let topic = room ? await room.topic() : '单聊';
         switch (type) {
             case Message.Type.Text:
-                say(`[${contact.name()}]于[${topic}]中撤回了一条消息: ${message.text()}`);
+                say(`[${name}]于[${topic}]中撤回了一条消息: ${message.text()}`);
                 break;
             case Message.Type.Video:
             case Message.Type.Audio:
@@ -53,7 +50,7 @@ event.on('recall', async message => {
                 let file = await saveMediaFile2(message);
                 if (file) {
                     const fb = FileBox.fromFile(file);
-                    await say(`[${contact.name()}]于[${topic}]中撤回了一条媒体消息`);
+                    await say(`[${name}]于[${topic}]中撤回了一条媒体消息`);
                     await say(fb);
                 }
                 break;
@@ -63,12 +60,10 @@ event.on('recall', async message => {
     } catch (error) {
         console.log('recall error', error);
     }
-
-})
+});
 
 const apiai = require('../bots/apiai.free');
 const talk = require('../bots/wx');
-
 
 async function onMessage(message) {
     try {
@@ -95,7 +90,7 @@ async function onMessage(message) {
         const room = message.room();
         const type = message.type();
 
-        log.info('Message', 'from: %s, %s;', contact.id, contact.name());
+        log.info('Message', 'from: %s, %s, %s;', contact.id, contact.name(), contact);
         // 消息推送
         if ('newsapp' == contact.id) return;
 
@@ -142,9 +137,10 @@ async function onMessage(message) {
                         msg = msg.match(/<msgid>(.+?)<\/msgid><replacemsg>(.+?)<\/replacemsg>/);
                         if (msg) {
                             console.log('isrevoke', msg[1], msg[2]);
+                            let name = msg[2].match(/\"(.+)+\"/);
                             let m = bot.Message.load(msg[1]);
                             m.ready().then(() => {
-                                event.emit('recall', m);
+                                event.emit('recall', { msg: m, name: name });
                             });
                             return;
                         }
@@ -183,8 +179,7 @@ async function onMessage(message) {
                 } else {
                     // 天气语义
                     if (weatherServ.valid(apiresult)) result = await weatherServ(apiresult);
-                    else
-                        result = JSON.stringify(apiresult);
+                    else result = JSON.stringify(apiresult);
                 }
 
                 if (result) {
@@ -231,7 +226,6 @@ async function onMessage(message) {
                 console.log('default type');
                 break;
         }
-
     } catch (error) {
         console.log(error);
     }
@@ -242,9 +236,7 @@ async function say(p) {
         for (var k in senders) {
             await senders[k].say(p);
         }
-    } catch (error) {
-
-    }
+    } catch (error) {}
 }
 
 // for default puppet
@@ -287,7 +279,7 @@ async function saveMediaFile2(message) {
     }
     name = moment(date).format('YYYY_MM_DD') + '_' + name;
 
-    process.stdout.write('saving...')
+    process.stdout.write('saving...');
     try {
         var filepath = path.resolve(config.path, name);
         // const netStream = await message.readyStream()
@@ -306,31 +298,28 @@ async function saveMediaFile2(message) {
     }
 }
 
-var saveFile = function (filePath, fileData) {
+var saveFile = function(filePath, fileData) {
     return new Promise((resolve, reject) => {
         // 块方式写入文件
         const wstream = fs.createWriteStream(filePath);
 
         wstream.on('open', () => {
             const blockSize = 128;
-            const nbBlocks = Math.ceil(fileData.length / (blockSize));
+            const nbBlocks = Math.ceil(fileData.length / blockSize);
             for (let i = 0; i < nbBlocks; i += 1) {
-                const currentBlock = fileData.slice(
-                    blockSize * i,
-                    Math.min(blockSize * (i + 1), fileData.length),
-                );
+                const currentBlock = fileData.slice(blockSize * i, Math.min(blockSize * (i + 1), fileData.length));
                 wstream.write(currentBlock);
             }
 
             wstream.end();
         });
-        wstream.on('error', (err) => {
+        wstream.on('error', err => {
             reject(err);
         });
         wstream.on('finish', () => {
             resolve(true);
         });
     });
-}
+};
 
 module.exports = onMessage;
