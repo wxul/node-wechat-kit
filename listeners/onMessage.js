@@ -140,7 +140,7 @@ async function onMessage(message) {
                             let name = msg[2].match(/\"(.+)+\"/);
                             let m = bot.Message.load(msg[1]);
                             m.ready().then(() => {
-                                event.emit('recall', { msg: m, name: name });
+                                event.emit('recall', { msg: m, name: name ? name[1] : 'none' });
                             });
                             return;
                         }
