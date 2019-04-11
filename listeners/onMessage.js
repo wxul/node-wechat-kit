@@ -6,6 +6,8 @@ const moment = require('moment');
 const Eventemitter3 = require('eventemitter3');
 const weatherServ = require('../service/weather');
 const rss = require('../service/zhihurss');
+const baiduhot = require('../service/baiduhot');
+const people = require('../service/people');
 const { FileBox } = require('file-box');
 
 let event = new Eventemitter3();
@@ -158,12 +160,25 @@ async function onMessage(message) {
 
                 if (text == '知乎') {
                     let r = await rss();
-                    if (room) {
-                        await room.say(r);
-                    } else {
-                        await contact.say(r);
-                    }
+
+                    await message.say(r);
                     // console.log(r);
+                    return;
+                } else if (text.indexOf('百度热搜') == 0) {
+                    let r = await baiduhot();
+                    if (!r) return;
+                    await message.say(`${r}`);
+                    return;
+                } else if (text == '新闻') {
+                    let result = `回复关键词获取新闻热点：\n[知乎]: 知乎RSS热点\n[百度热搜]: 百度实时热搜榜\n[人民网 国内]: 人民网国内新闻\n[人民网 国际]: 人民网国际新闻`;
+
+                    await message.say(`${result}`);
+                    return;
+                } else if(text.indexOf('人民网') == 0){
+                    let type = text.split(' ')[1]|| '国内'
+                    let r = await people(type);
+
+                    await message.say(r);
                     return;
                 }
 
@@ -189,11 +204,9 @@ async function onMessage(message) {
                     text = '';
                     return;
                 }
-                if (room) {
-                    await room.say(text);
-                } else {
-                    await contact.say(text);
-                }
+
+                await message.say(text);
+
                 break;
             case Message.Type.Video:
                 // if (!isAdmin) {
