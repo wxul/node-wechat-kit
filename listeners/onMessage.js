@@ -1,4 +1,4 @@
-const { Message, log, Contact } = require('wechaty');
+const { Message, log, Contact, MediaMessage } = require('wechaty');
 const fs = require('fs');
 const path = require('path');
 const config = require('../config');
@@ -44,16 +44,26 @@ event.on('recall', async opt => {
         let topic = room ? await room.topic() : '单聊';
         switch (type) {
             case Message.Type.Text:
-                say(`[${name}]于[${topic}]中撤回了一条消息: ${message.text()}`);
+                if (!name) {
+                    say(opt.des);
+                } else {
+                    say(`[${name}]于[${topic}]中撤回了一条消息: ${message.text()}`);
+                }
+
                 break;
             case Message.Type.Video:
             case Message.Type.Audio:
             case Message.Type.Image:
-                let file = await saveMediaFile2(message);
+                let file = await saveMediaFile(message);
                 if (file) {
-                    const fb = FileBox.fromFile(file);
-                    await say(`[${name}]于[${topic}]中撤回了一条媒体消息`);
-                    await say(fb);
+                    // const fb = FileBox.fromFile(file);
+                    // console.log('xx file box', fb);
+                    if (!name) {
+                        say(opt.des);
+                    } else {
+                        say(`[${name}]于[${topic}]中撤回了一条媒体消息`);
+                    }
+                    await say(FileBox.fromFile(file));
                 }
                 break;
             default:
@@ -69,7 +79,7 @@ const talk = require('../bots/wx');
 
 async function onMessage(message) {
     try {
-        log.info('Bot', '(message) %s %s', message.id, message.toString());
+        log.info('Bot', '(message) %s %s', message.id, message.type(), message.toString());
 
         // 初始化发送人
         if (!senders || senders.length == 0) {
@@ -174,8 +184,8 @@ async function onMessage(message) {
 
                     await message.say(`${result}`);
                     return;
-                } else if(text.indexOf('人民网') == 0){
-                    let type = text.split(' ')[1]|| '国内'
+                } else if (text.indexOf('人民网') == 0) {
+                    let type = text.split(' ')[1] || '国内';
                     let r = await people(type);
 
                     await message.say(r);
@@ -218,7 +228,7 @@ async function onMessage(message) {
                 // if (!isAdmin) {
                 //     saveMediaFile2(message);
                 // }
-                console.log('Image:');
+                console.log('Image:', message.id);
                 break;
             case Message.Type.Audio:
                 // if (!isAdmin) {
@@ -233,7 +243,18 @@ async function onMessage(message) {
                 console.log('Url:', message.text());
                 break;
             case Message.Type.Recalled:
-                console.log('Recalled', message);
+                console.log('Recalled', message.text());
+                var result;
+                try {
+                    result = JSON.parse(message.text());
+                    let msgId = result.msgid;
+                    let msg = bot.Message.load(msgId);
+                    await msg.ready();
+                    // console.log('>>>>>.',msg.type(),msg)
+                    let name = msg.from().name();
+                    event.emit('recall', { msg: msg, name: name, des: result.replacemsg });
+                    // console.log(msg.text());
+                } catch (error) {}
                 break;
             default:
                 console.log('default type');
@@ -270,6 +291,7 @@ async function saveMediaFile(message) {
         log.info('IMAGE local filename: ' + name);
         let filepath = path.resolve(config.path, name);
         file.toFile(filepath);
+        return filepath;
     } catch (error) {
         console.log(error);
     }

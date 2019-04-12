@@ -21,6 +21,7 @@
     "querystring": "^0.2.0",
     "wechat4u": "^0.7.6",
     "wechaty": "^0.22.6",
+    "wechaty-puppet-puppeteer": "git+ssh://git@github.com/wxul/wechaty-puppet-puppeteer-fork.git",
     "wechaty-puppet-wechat4u": "git+ssh://git@github.com/wxul/wechaty-puppet-wechat4u.git",
     "xml2js": "^0.4.19"
   }

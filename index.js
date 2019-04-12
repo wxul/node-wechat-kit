@@ -1,12 +1,6 @@
-const {
-    IoClient,
-    Wechaty,
-    config,
-    log,
-} = require('wechaty');
-const {
-    PuppetWechat4u
-} = require('wechaty-puppet-wechat4u');
+const { IoClient, Wechaty, config, log } = require('wechaty');
+const { PuppetWechat4u } = require('wechaty-puppet-wechat4u');
+const { PuppetPuppeteer } = require('wechaty-puppet-puppeteer');
 // const {
 //     PuppetWechat4u
 // } = require('../wechaty-puppet-wechat4u/dist/src/index');
@@ -27,21 +21,20 @@ const {
 // }
 
 const bot = Wechaty.instance({
-    profile: "default",
-    puppet: new PuppetWechat4u()
-})
+    profile: 'default',
+    puppet: new PuppetPuppeteer()
+});
 
 global.bot = bot;
 
-bot
-    .on('scan', './listeners/onScan')
+bot.on('scan', './listeners/onScan')
     .on('login', './listeners/onLogin')
     .on('message', './listeners/onMessage')
     .on('logout', './listeners/onLogout')
     .on('error', './listeners/onError')
     .start()
-    .catch(async function (e) {
+    .catch(async function(e) {
         log(`Init() fail: ${e}.`);
         await bot.stop();
-        process.exit(1)
-    })
+        process.exit(1);
+    });
