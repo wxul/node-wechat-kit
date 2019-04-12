@@ -45,7 +45,7 @@ event.on('recall', async opt => {
         switch (type) {
             case Message.Type.Text:
                 if (!name) {
-                    say(opt.des);
+                    say(opt.des + ': ' + message.text());
                 } else {
                     say(`[${name}]于[${topic}]中撤回了一条消息: ${message.text()}`);
                 }
